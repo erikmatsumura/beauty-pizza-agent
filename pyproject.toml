@@ -1,3 +1,39 @@
-[tool.poetry]
-name = "beauty-pizza-agent"
-version = "0.1.0"
+# Beauty Pizza Agent - Requirements
+
+# Core AI Framework
+agno>=0.7.0
+
+# OpenAI Integration
+openai>=1.0.0
+
+# Vector Database and Embeddings
+chromadb>=0.4.0
+langchain>=0.1.0
+langchain-community>=0.0.20
+langchain-openai>=0.0.5
+sentence-transformers>=2.2.0
+
+# HTTP Client for API Integration
+httpx>=0.25.0
+requests>=2.31.0
+
+# Environment Management
+python-dotenv>=1.0.0
+
+# Text Processing
+tiktoken>=0.5.0
+
+# Database
+sqlite3
+
+# Optional Vector Stores (for fallback)
+faiss-cpu>=1.7.4
+# faiss-gpu>=1.7.4  # Uncomment if you have GPU support
+
+# Development and Utilities
+pydantic>=2.0.0
+typing-extensions>=4.8.0
+
+# Optional: For future web interface
+# streamlit>=1.28.0
+# gradio>=3.50.0
