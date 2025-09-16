@@ -3,7 +3,7 @@ import warnings
 from collections import deque
 from app.agent import agent
 
-warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
+warnings.filterwarnings("ignore")
 
 WINDOW = 8  
 chat_window = deque(maxlen=WINDOW)  
@@ -17,7 +17,23 @@ def render_transcript():
     return "\n".join(lines)
 
 def main():
-    print("Digite 'limpar' para zerar contexto ou 'sair' para encerrar.\n")
+    print("""
+          
+
+        ════════════════════════════════════  
+        🍕 Olá! Sou seu atendente virtual da Beauty Pizza!
+
+        Posso te ajudar a:
+        ✅ Ver o cardápio completo
+        ✅ Entender sobre algum ingrediente
+        ✅ Contar um pouco sobre a história da pizza
+        ✅ Calcular o preço total
+        ✅ Fazer seu pedido 
+        ✅ Organizar a entrega
+
+        Digite sua mensagem ou 'sair' para encerrar.
+        ════════════════════════════════════
+    """)
     while True:
         try:
             user_input = input("Você: ").strip()
@@ -27,6 +43,9 @@ def main():
                 chat_window.clear(); print("Contexto limpo. 🧼"); continue
 
             chat_window.append({"role":"user","content":user_input})
+            print('                            ')
+            print('------------------')
+
 
             # 2) monta um único prompt com transcript curto + pergunta atual
             transcript = render_transcript()
@@ -43,6 +62,7 @@ def main():
 
             # 4) guarda a fala do atendente
             chat_window.append({"role":"assistant","content":assistant_text})
+            print('------------------')
 
         except KeyboardInterrupt:
             print("\nAté mais! 🍕"); break

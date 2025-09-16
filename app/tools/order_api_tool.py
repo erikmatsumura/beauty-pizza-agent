@@ -217,16 +217,19 @@ def delete_item_from_order(order_id: int, item_id: int,
 
 
 def update_order_address(order_id: int, delivery_address: Dict[str, str],
-                        base_url: str | None = None, timeout: float = 10.0) -> Dict[str, Any]:
+                        base_url="http://localhost:8000/api", timeout: float = 10.0) -> Dict[str, Any]:
     """
     Atualiza o endereço de entrega de um pedido.
     
     Args:
         order_id (int): ID do pedido (obrigatório).
         delivery_address (Dict[str, str]): Novo endereço de entrega (obrigatório).
-            Campos obrigatórios:
-            - street_name (str): Nome da rua do endereço
-            - number (str): Número do endereço
+        delivery_address = {
+            "street_name": "Nome da rua contida no endereço" (obrigatório),
+            "number": "Numero do logradouro" (obrigatório),
+            "complement": "Complemento" ,
+            "reference_point": "Ponto de referência"
+        }
             Campos opcionais:
             - complement (str): Complemento do endereço
             - reference_point (str): Ponto de referência
@@ -262,19 +265,8 @@ def update_order_address(order_id: int, delivery_address: Dict[str, str],
     if not delivery_address.get("number") or not delivery_address["number"].strip():
         raise ValueError("'number' é obrigatório e não pode estar vazio")
     
-    # Limpar espaços em branco dos campos obrigatórios
-    cleaned_address = {
-        "street_name": delivery_address["street_name"].strip(),
-        "number": delivery_address["number"].strip()
-    }
     
-    # Adicionar campos opcionais se existirem
-    if delivery_address.get("complement"):
-        cleaned_address["complement"] = delivery_address["complement"].strip()
-    if delivery_address.get("reference_point"):
-        cleaned_address["reference_point"] = delivery_address["reference_point"].strip()
-    
-    payload = {"delivery_address": cleaned_address}
+    payload = {"delivery_address": delivery_address}
     
     with _get_client(base_url, timeout) as client:
         r = client.patch(f"/orders/{order_id}/update-address/", json=payload)

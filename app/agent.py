@@ -58,7 +58,7 @@ REGRAS OBRIGATÓRIAS:
 PARÂMETROS OBRIGATORIOS DE CADA FUNÇÃO:
 
 update_order_address()
-order_id (int) - ID do pedido
+order_id (int) - ID do pedido (OBRIGATORIO)
 delivery_address (Dict) - Logradouro de entrega, que deve conter:
             {
             "street_name": "Nome da rua" (OBRIGATORIO),
@@ -66,9 +66,17 @@ delivery_address (Dict) - Logradouro de entrega, que deve conter:
             "complement": "Complemento" ,
             "reference_point": "Ponto de referência"
             }
+
 create_complete_order() 
 client_name (str) - Nome do cliente
 client_document (str) - Documento do cliente
+delivery_address (Dict) - Logradouro de entrega, que deve conter:
+            {
+            "street_name": "Nome da rua" (OBRIGATORIO),
+            "number": "Numero do logradouro" (OBRIGATORIO),
+            "complement": "Complemento" ,
+            "reference_point": "Ponto de referência"
+            }
 delivery_date (str) - Data de entrega no formato "YYYY-MM-DD"
 items (List[Dict]) - Lista de itens ex:     Example:
         items = [
@@ -82,7 +90,7 @@ client_document (str) - Documento do cliente
 Sempre responda em português brasileiro.
 """
 debug_mode = False
-
+markdown = False
 information_agent = Agent(
     name="Information Agent",
     role="Procurar informações referentes ao cardapio, pedidos e ingredientes",
@@ -90,7 +98,7 @@ information_agent = Agent(
     instructions=SYSTEM_PROMPT,
     knowledge=knowledge,
     tools=[get_menu, get_ingredients, get_price],
-    markdown=True,
+    markdown=markdown,
     debug_mode=debug_mode
 )
 
@@ -100,7 +108,7 @@ executor_agent = Agent(
     model=OpenAIChat(id="gpt-4.1", temperature=0, max_tokens=6000),
     tools=[get_price,create_complete_order,filter_orders,update_order_address,get_client_orders],
     instructions="use OrderApiTool (create_order → add_item → set_address → get_total)",
-    markdown=True,
+    markdown=markdown,
     debug_mode=debug_mode
 )
 
