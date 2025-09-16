@@ -282,8 +282,6 @@ def update_order_address(order_id: int, delivery_address: Dict[str, str],
         return r.json() if r.content else {"message": "Endereço atualizado com sucesso."}
 
 
-# Funções auxiliares para facilitar o uso (mantidas como estavam, pois já usam as validações das funções acima)
-
 def create_complete_order(client_name: str, client_document: str, delivery_date: str,
                          items: List[Dict[str, Any]], delivery_address: Dict[str, str],
                          base_url: str | None = None, timeout: float = 10.0) -> Dict[str, Any]:
