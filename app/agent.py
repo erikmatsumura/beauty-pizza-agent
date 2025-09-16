@@ -81,6 +81,7 @@ client_document (str) - Documento do cliente
 
 Sempre responda em português brasileiro.
 """
+debug_mode = False
 
 information_agent = Agent(
     name="Information Agent",
@@ -90,7 +91,7 @@ information_agent = Agent(
     knowledge=knowledge,
     tools=[get_menu, get_ingredients, get_price],
     markdown=True,
-    debug_mode=True
+    debug_mode=debug_mode
 )
 
 executor_agent = Agent(
@@ -100,7 +101,7 @@ executor_agent = Agent(
     tools=[get_price,create_complete_order,filter_orders,update_order_address,get_client_orders],
     instructions="use OrderApiTool (create_order → add_item → set_address → get_total)",
     markdown=True,
-    debug_mode=True
+    debug_mode=debug_mode
 )
 
 agent = Team(model=OpenAIChat(id="gpt-4.1", temperature=0, max_tokens=6000),
