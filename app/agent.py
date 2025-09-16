@@ -107,7 +107,7 @@ executor_agent = Agent(
     role="Executar ações relacionadas a pedidos",
     model=OpenAIChat(id="gpt-4.1", temperature=0, max_tokens=6000),
     tools=[get_price,create_complete_order,filter_orders,update_order_address,get_client_orders],
-    instructions="use OrderApiTool (create_order → add_item → set_address → get_total)",
+    instructions=SYSTEM_PROMPT2,
     markdown=markdown,
     debug_mode=debug_mode
 )
