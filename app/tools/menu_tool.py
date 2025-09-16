@@ -1,177 +1,73 @@
 import sqlite3
+import logging
 from pathlib import Path
+from .schemas import PizzaSpec
 
-class MenuTool:
-    def __init__(self, db_path: str = "data/knowledge_base.db"):
-        self.db_path = Path(db_path)
-        # Criar diretório se não existir
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._init_db()
+import sqlite3
+import logging
+from pathlib import Path
+from .schemas import PizzaIngredients,Flavor
 
-    def _conn(self):
-        return sqlite3.connect(self.db_path)
+def _get_connection(db_path: str = "data/knowledge_base.db"):
+    """Cria conexão com o banco de dados."""
+    db_path_obj = Path(db_path)
+    db_path_obj.parent.mkdir(parents=True, exist_ok=True)
+    return sqlite3.connect(db_path_obj)
 
-    def _init_db(self):
-        """Inicializa o banco com dados de exemplo se não existir"""
-        with self._conn() as con:
-            # Verificar se as tabelas existem
-            cursor = con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pizzas'")
-            if not cursor.fetchone():
-                self._create_tables_from_sql()
-
-    def _create_tables_from_sql(self):
-        """Cria as tabelas usando o schema SQL fornecido"""
-        sql_script = """
-        -- Tabela para armazenar informações sobre as pizzas
-        CREATE TABLE IF NOT EXISTS pizzas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sabor TEXT NOT NULL,
-            descricao TEXT NOT NULL,
-            ingredientes TEXT NOT NULL
-        );
-
-        -- Tabela para os tamanhos de pizza disponíveis
-        CREATE TABLE IF NOT EXISTS tamanhos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tamanho TEXT NOT NULL UNIQUE
-        );
-
-        -- Tabela para os tipos de borda
-        CREATE TABLE IF NOT EXISTS bordas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tipo TEXT NOT NULL UNIQUE
-        );
-
-        -- Tabela de preços, relacionando pizza, tamanho e borda
-        CREATE TABLE IF NOT EXISTS precos (
-            pizza_id INTEGER,
-            tamanho_id INTEGER,
-            borda_id INTEGER,
-            preco REAL NOT NULL,
-            PRIMARY KEY (pizza_id, tamanho_id, borda_id),
-            FOREIGN KEY (pizza_id) REFERENCES pizzas(id),
-            FOREIGN KEY (tamanho_id) REFERENCES tamanhos(id),
-            FOREIGN KEY (borda_id) REFERENCES bordas(id)
-        );
-
-        -- Inserção de dados nas tabelas
-        INSERT INTO pizzas (sabor, descricao, ingredientes) VALUES
-        ('Margherita', 'A clássica pizza italiana.', 'Molho de tomate, mussarela, manjericão fresco, azeite extra virgem.'),
-        ('Pepperoni', 'A pizza mais pedida nos EUA.', 'Molho de tomate, mussarela, fatias de pepperoni.'),
-        ('Quatro Queijos', 'Combinação de queijos para os amantes de laticínios.', 'Molho de tomate, mussarela, provolone, parmesão, gorgonzola.'),
-        ('Calabresa', 'Saborosa pizza de calabresa com cebola.', 'Molho de tomate, mussarela, calabresa fatiada, cebola.'),
-        ('Frango com Catupiry', 'Deliciosa pizza de frango desfiado com Catupiry original.', 'Molho de tomate, mussarela, frango desfiado, Catupiry.'),
-        ('Doce de Leite com Coco', 'Uma opção doce para fechar a refeição.', 'Doce de leite cremoso, coco ralado, leite condensado.');
-
-        INSERT INTO tamanhos (tamanho) VALUES
-        ('Pequena'),
-        ('Média'),
-        ('Grande');
-
-        INSERT INTO bordas (tipo) VALUES
-        ('Tradicional'),
-        ('Recheada com Cheddar'),
-        ('Recheada com Catupiry');
-
-        -- Inserção de preços para cada combinação de pizza, tamanho e borda
-        -- Margherita
-        INSERT INTO precos (pizza_id, tamanho_id, borda_id, preco) VALUES
-        (1, 1, 1, 25.00), -- Pequena, Tradicional
-        (1, 2, 1, 35.00), -- Média, Tradicional
-        (1, 3, 1, 45.00), -- Grande, Tradicional
-        (1, 2, 2, 38.00), -- Média, Recheada com Cheddar
-        (1, 3, 2, 48.00), -- Grande, Recheada com Cheddar
-        (1, 2, 3, 39.00), -- Média, Recheada com Catupiry
-        (1, 3, 3, 49.00); -- Grande, Recheada com Catupiry
-
-        -- Pepperoni
-        INSERT INTO precos (pizza_id, tamanho_id, borda_id, preco) VALUES
-        (2, 1, 1, 28.00),
-        (2, 2, 1, 38.00),
-        (2, 3, 1, 48.00),
-        (2, 2, 2, 41.00),
-        (2, 3, 2, 51.00),
-        (2, 2, 3, 42.00),
-        (2, 3, 3, 52.00);
-
-        -- Quatro Queijos
-        INSERT INTO precos (pizza_id, tamanho_id, borda_id, preco) VALUES
-        (3, 1, 1, 30.00),
-        (3, 2, 1, 40.00),
-        (3, 3, 1, 50.00),
-        (3, 2, 2, 43.00),
-        (3, 3, 2, 53.00),
-        (3, 2, 3, 44.00),
-        (3, 3, 3, 54.00);
-
-        -- Calabresa
-        INSERT INTO precos (pizza_id, tamanho_id, borda_id, preco) VALUES
-        (4, 1, 1, 27.00),
-        (4, 2, 1, 37.00),
-        (4, 3, 1, 47.00),
-        (4, 2, 2, 40.00),
-        (4, 3, 2, 50.00),
-        (4, 2, 3, 41.00),
-        (4, 3, 3, 51.00);
-
-        -- Frango com Catupiry
-        INSERT INTO precos (pizza_id, tamanho_id, borda_id, preco) VALUES
-        (5, 1, 1, 29.00),
-        (5, 2, 1, 39.00),
-        (5, 3, 1, 49.00),
-        (5, 2, 2, 42.00),
-        (5, 3, 2, 52.00),
-        (5, 2, 3, 43.00),
-        (5, 3, 3, 53.00);
-
-        -- Doce de Leite com Coco
-        INSERT INTO precos (pizza_id, tamanho_id, borda_id, preco) VALUES
-        (6, 1, 1, 25.00),
-        (6, 2, 1, 35.00),
-        (6, 3, 1, 45.00);
-        """
+def get_menu(db_path: str = "data/knowledge_base.db") -> dict:
+    """Lista pizzas, tamanhos e bordas disponíveis."""
+    with _get_connection(db_path) as con:
+        # Pizzas
+        pizzas_cur = con.execute("SELECT sabor, descricao FROM pizzas ORDER BY sabor")
+        pizzas = [{"flavor": f, "description": d} for (f, d) in pizzas_cur.fetchall()]
         
-        with self._conn() as con:
-            con.executescript(sql_script)
+        # Tamanhos  
+        sizes_cur = con.execute("SELECT tamanho FROM tamanhos ORDER BY id")
+        sizes = [row[0] for row in sizes_cur.fetchall()]
+        
+        # Bordas
+        crusts_cur = con.execute("SELECT tipo FROM bordas ORDER BY id") 
+        crusts = [row[0] for row in crusts_cur.fetchall()]
+        
+        return {
+            "sabores": pizzas,
+            "tamanhos": sizes, 
+            "bordas": crusts
+        }
 
-    def list_pizzas(self) -> list[dict]:
-        """Lista todas as pizzas disponíveis no cardápio com sabores, descrições e ingredientes"""
-        with self._conn() as con:
-            cur = con.execute("SELECT sabor, descricao, ingredientes FROM pizzas ORDER BY sabor")
-            return [{"sabor": s, "descricao": d, "ingredientes": i} for (s, d, i) in cur.fetchall()]
+def get_ingredients(flavor: PizzaIngredients, db_path: str = "data/knowledge_base.db") -> list[str]:
+    """Obtém os ingredientes de uma pizza específica."""
+    with _get_connection(db_path) as con:
+        cur = con.execute("SELECT ingredientes FROM pizzas WHERE sabor = ?", (flavor.flavor,))
+        result = cur.fetchone()
+        
+        if result:
+            ingredients = result[0].split(', ')
+            return ingredients
+        else:
+            return []
 
-    def get_ingredients(self, sabor: str) -> str:
-        """Retorna os ingredientes para um sabor específico de pizza"""
-        with self._conn() as con:
-            cur = con.execute("SELECT ingredientes FROM pizzas WHERE sabor = ?", (sabor,))
-            result = cur.fetchone()
-            return result[0] if result else ""
+def get_price(pizza_spec: PizzaSpec, db_path: str = "data/knowledge_base.db") -> float:
+    """Busca por NOME → mapeia para IDs → lê preço da combinação exata em `precos`."""
+    return get_price_by_ids(pizza_spec.flavor, pizza_spec.size, pizza_spec.crust, db_path)
 
-    def get_price(self, sabor: str, tamanho: str, borda: str) -> float:
-        """Calcula o preço final de uma pizza baseado no sabor, tamanho e borda"""
-        with self._conn() as con:
-            query = """
-            SELECT p.preco 
-            FROM precos p
-            JOIN pizzas pi ON p.pizza_id = pi.id
-            JOIN tamanhos t ON p.tamanho_id = t.id
-            JOIN bordas b ON p.borda_id = b.id
-            WHERE pi.sabor = ? AND t.tamanho = ? AND b.tipo = ?
+def get_price_by_ids(pizza_id: int, tamanho_id: int, borda_id: int, db_path: str = "data/knowledge_base.db") -> float:
+    """Busca DIRETO por IDs na tabela `precos`."""
+    with _get_connection(db_path) as con:
+        row = con.execute(
             """
-            cur = con.execute(query, (sabor, tamanho, borda))
-            result = cur.fetchone()
-            if not result:
-                raise ValueError(f"Combinação não encontrada: {sabor}, {tamanho}, {borda}")
-            return float(result[0])
-
-    def get_tamanhos(self) -> list[str]:
-        """Retorna lista de tamanhos disponíveis"""
-        with self._conn() as con:
-            cur = con.execute("SELECT tamanho FROM tamanhos ORDER BY id")
-            return [row[0] for row in cur.fetchall()]
-
-    def get_bordas(self) -> list[str]:
-        """Retorna lista de bordas disponíveis"""
-        with self._conn() as con:
-            cur = con.execute("SELECT tipo FROM bordas ORDER BY id")
-            return [row[0] for row in cur.fetchall()]
+            SELECT preco
+            FROM precos
+            WHERE pizza_id = ? AND tamanho_id = ? AND borda_id = ?;
+            """,
+            (pizza_id, tamanho_id, borda_id)
+        ).fetchone()
+        
+        if not row:
+            raise LookupError(
+                f"Preço não cadastrado para combinação "
+                f"(pizza_id={pizza_id}, tamanho_id={tamanho_id}, borda_id={borda_id})."
+            )
+        
+        price = float(row[0])
+        return price

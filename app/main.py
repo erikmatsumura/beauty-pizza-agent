@@ -2,71 +2,52 @@ import warnings
 import os
 import logging
 
+from collections import deque
 from app.agent import agent
 
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-logging.getLogger().setLevel(logging.WARNING)
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
-
+WINDOW = 8  
+chat_window = deque(maxlen=WINDOW)  
+def render_transcript():
+    if not chat_window:
+        return ""
+    lines = []
+    for m in chat_window:
+        role = "Cliente" if m["role"] == "user" else "Atendente"
+        lines.append(f"{role}: {m['content']}")
+    return "\n".join(lines)
 
 def main():
-    print("""
-🍕 BEAUTY PIZZA — ATENDENTE VIRTUAL INTELIGENTE 🍕
-=======================================================
-✨ Bem-vindo! Posso ajudar você com:
-📋 • Consultar nosso cardápio completo
-🌱 • Encontrar opções especiais (sem lactose, veganas, etc.)
-🎯 • Montar seu pedido personalizado
-💰 • Calcular preços em tempo real
-🚚 • Finalizar seu pedido com entrega
-=======================================================
-💬 Digite sua mensagem ou 'sair' para encerrar.
-""")
-    
+    print("Digite 'limpar' para zerar contexto ou 'sair' para encerrar.\n")
     while True:
         try:
-            user_input = input("Você: ")
-            
-            if user_input.lower() in ['sair', 'exit', 'quit']:
-                print("Obrigado por escolher a Beauty Pizza! Até mais! 🍕")
-                break
-            
-            response = agent.run(user_input, stream=False)
-            
-            # Debug detalhado
-            print(f"[DEBUG] Tipo de response: {type(response)}")
-            print(f"[DEBUG] Atributos do response: {dir(response)}")
-            
-            tool_called = False
-            if hasattr(response, 'messages'):
-                print(f"[DEBUG] Número de mensagens: {len(response.messages)}")
-                for i, msg in enumerate(response.messages):
-                    print(f"[DEBUG] Mensagem {i}: {type(msg)}")
-                    if hasattr(msg, 'tool_calls') and msg.tool_calls:
-                        tool_called = True
-                        for tool_call in msg.tool_calls:
-                            print(f"[DEBUG] Tool Call: {tool_call.function.name}")
-                            if hasattr(tool_call.function, 'arguments'):
-                                print(f"[DEBUG] Arguments: {tool_call.function.arguments}")
-                    
-                    if hasattr(msg, 'content') and msg.content:
-                        print(f"[DEBUG] Message content: {msg.content}")
-            
-            if not tool_called:
-                print("[DEBUG] NENHUMA FERRAMENTA FOI CHAMADA!")
-            
-            # Print the final response
-            if hasattr(response, 'content') and response.content:
-                print(f"Atendente: {response.content}\n")
-            else:
-                print("[DEBUG] No content in response")
-                print(f"[DEBUG] Response object: {response}\n")
-            
+            user_input = input("Você: ").strip()
+            if user_input.lower() in ("sair","exit","quit"):
+                print("Até mais! 🍕"); break
+            if user_input.lower() in ("limpar","clear","reset"):
+                chat_window.clear(); print("Contexto limpo. 🧼"); continue
+
+            chat_window.append({"role":"user","content":user_input})
+
+            # 2) monta um único prompt com transcript curto + pergunta atual
+            transcript = render_transcript()
+            composed = (
+                "CONVERSA ATÉ AQUI (use para manter continuidade):\n"
+                + (transcript if transcript else "—")
+                + "\n\nRESPOSTA PARA A ÚLTIMA MENSAGEM DO CLIENTE:"
+            )
+
+            # 3) chama o agente passando o composed (mantendo suas instructions originais)
+            response = agent.run(composed, stream=False)
+            assistant_text = getattr(response, "content", str(response)).strip()
+            print(f"Atendente: {assistant_text}\n")
+
+            # 4) guarda a fala do atendente
+            chat_window.append({"role":"assistant","content":assistant_text})
+
         except KeyboardInterrupt:
-            print("\nObrigado por escolher a Beauty Pizza! Até mais! 🍕")
-            break
+            print("\nAté mais! 🍕"); break
         except Exception as e:
             print(f"Erro: {e}")
 

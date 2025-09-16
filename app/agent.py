@@ -2,46 +2,87 @@ import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from agno.agent import Agent
-from app.tools.menu_tool import MenuTool
-from app.tools.order_api_tool import OrderApiTool
+from agno.team import Team
+from agno.models.openai import OpenAIChat
+from app.tools.menu_tool import get_menu, get_ingredients, get_price
+from app.tools.order_api_tool import create_complete_order,filter_orders,update_order_address,get_client_orders
 from app.tools.embeddings import MenuEmbeddings
+from app.init_db import initialize_database
 
-menu = MenuTool()
-order_api = OrderApiTool()
-emb = MenuEmbeddings()
 
-emb.build_from_sqlite(menu)
+# Inicializar base de dados primeiro
+initialize_database()
 
-# Debug: Print available tools
-print("Available tools:")
-print(f"- MenuTool methods: {[method for method in dir(menu) if not method.startswith('_')]}")
-print(f"- MenuEmbeddings methods: {[method for method in dir(emb) if not method.startswith('_')]}")
-print(f"- OrderApiTool methods: {[method for method in dir(order_api) if not method.startswith('_')]}")
+# emb = MenuEmbeddings()
+# emb.build_from_sqlite(menu_tool)
 
 SYSTEM_PROMPT = """
 Você é o atendente da Beauty Pizza. Seja objetivo e amigável.
 
-IMPORTANTE: Você DEVE usar as ferramentas disponíveis para obter informações reais. NUNCA invente dados.
+REGRAS OBRIGATÓRIAS:
+- Para dúvidas de cardápio: use get_menu()
+- Para saber ingrediente de alguma pizza get_ingredients(flavor)
+- Para montar pedido: SEMPRE peça sabor, tamanho e borda (todos obrigatórios)
+- Sempre passe o preço apos o pedido
+- Para preços: SEMPRE use get_price() - NUNCA chute valores
+- Antes de confirmar: mostre resumo completo do carrinho
 
-REGRAS OBRIGATÓRIAS - USE AS FERRAMENTAS:
-1. Para qualquer pergunta sobre cardápio, menu, pizzas disponíveis ou sabores: SEMPRE chame list_pizzas() PRIMEIRO
-2. Para ingredientes de um sabor específico: chame get_ingredients(sabor)
-3. Para busca de opções especiais: chame semantic_search(query)
-4. Para calcular preços: chame get_price(sabor, tamanho, borda)
-
-PALAVRAS-CHAVE QUE EXIGEM list_pizzas():
-- "cardápio", "menu", "sabores", "pizzas", "opções", "que vocês têm", "disponível"
-
-PROCESSO OBRIGATÓRIO:
-1. Cliente pergunta sobre cardápio → CHAME list_pizzas()
-2. Receba os dados → Formate e apresente ao cliente
-3. NUNCA responda sem usar a ferramenta
-
-Sempre use as ferramentas ANTES de responder ao cliente.
-Respostas em português brasileiro.
+Sempre responda em português brasileiro.
 """
 
-agent = Agent(
+SYSTEM_PROMPT2 = """
+Você é o atendente da Beauty Pizza. Seu objetivo é executar ações relacionadas a registro, busca e update de pedidos.
+
+REGRAS OBRIGATÓRIAS:
+-Quando tiver todas as informações, utilize create_complete_order para criar todo o pedido
+-Para atualizar o endereço de um pedido existente, utilize update_order_address
+-Para buscar pedidos de um cliente, utilize get_client_orders ou filter_orders
+-Para cada ação, utilize os dados fornecidos pelo cliente
+
+
+PARÂMETROS OBRIGATORIOS DE CADA FUNÇÃO:
+
+update_order_address()
+order_id (int) - ID do pedido
+delivery_address (Dict) - Endereço de entrega, que deve conter:
+street_name (str) - Nome da rua
+number (str) - Número
+
+create_complete_order() 
+client_name (str) - Nome do cliente
+client_document (str) - Documento do cliente
+delivery_date (str) - Data de entrega no formato "YYYY-MM-DD"
+items (List[Dict]) - Lista de itens ex:     Example:
+        items = [
+            {"name": "Produto A", "quantity": 2, "unit_price": 10.50},
+            {"name": "Produto B", "quantity": 1, "unit_price": 25.00}
+        ]
+
+get_client_orders()
+client_document (str) - Documento do cliente
+
+Sempre responda em português brasileiro.
+"""
+
+information_agent = Agent(
+    name="Information Agent",
+    role="Procurar informações referentes ao cardapio, pedidos e ingredientes",
+    model=OpenAIChat(id="gpt-4.1", temperature=0, max_tokens=6000),
     instructions=SYSTEM_PROMPT,
-    tools=[menu, order_api, emb],
+    tools=[get_menu, get_ingredients, get_price],
+    markdown=True,
+    debug_mode=True
 )
+
+executor_agent = Agent(
+    name="Executor Agent",
+    role="Executar ações relacionadas a pedidos",
+    model=OpenAIChat(id="gpt-4.1", temperature=0, max_tokens=6000),
+    tools=[get_price,create_complete_order,filter_orders,update_order_address,get_client_orders],
+    instructions="use OrderApiTool (create_order → add_item → set_address → get_total)",
+    markdown=True,
+    debug_mode=True
+)
+
+agent = Team(model=OpenAIChat(id="gpt-4.1", temperature=0, max_tokens=6000),
+             members=[information_agent, executor_agent])
