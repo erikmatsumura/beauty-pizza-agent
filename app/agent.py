@@ -6,15 +6,30 @@ from agno.team import Team
 from agno.models.openai import OpenAIChat
 from app.tools.menu_tool import get_menu, get_ingredients, get_price
 from app.tools.order_api_tool import create_complete_order,filter_orders,update_order_address,get_client_orders
-from app.tools.embeddings import MenuEmbeddings
 from app.init_db import initialize_database
 
+from agno.knowledge.knowledge import Knowledge
+from agno.knowledge.embedder.openai import OpenAIEmbedder
+from agno.vectordb.langchaindb import LangChainVectorDb
 
-# Inicializar base de dados primeiro
+from langchain_community.document_loaders import TextLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from app.embeddings.knowledge_setup import setup_knowledge_base
+
+
+# Inicializa o banco de dados
 initialize_database()
 
-# emb = MenuEmbeddings()
-# emb.build_from_sqlite(menu_tool)
+# Configura a base de conhecimento com Chroma
+knowledge = setup_knowledge_base(
+    file_path="data/historia_pizza.txt",
+    chunk_size=800,
+    chunk_overlap=120,
+    vectorstore_type="chroma",  # Força o uso do Chroma
+    persist_directory="./data/chroma_db",  # Pasta para persistir os dados
+    debug=True  # Mostra debug da API
+)
+
 
 SYSTEM_PROMPT = """
 Você é o atendente da Beauty Pizza. Seja objetivo e amigável.
@@ -44,10 +59,13 @@ PARÂMETROS OBRIGATORIOS DE CADA FUNÇÃO:
 
 update_order_address()
 order_id (int) - ID do pedido
-delivery_address (Dict) - Endereço de entrega, que deve conter:
-street_name (str) - Nome da rua
-number (str) - Número
-
+delivery_address (Dict) - Logradouro de entrega, que deve conter:
+            {
+            "street_name": "Nome da rua" (OBRIGATORIO),
+            "number": "Numero do logradouro" (OBRIGATORIO),
+            "complement": "Complemento" ,
+            "reference_point": "Ponto de referência"
+            }
 create_complete_order() 
 client_name (str) - Nome do cliente
 client_document (str) - Documento do cliente
@@ -69,6 +87,7 @@ information_agent = Agent(
     role="Procurar informações referentes ao cardapio, pedidos e ingredientes",
     model=OpenAIChat(id="gpt-4.1", temperature=0, max_tokens=6000),
     instructions=SYSTEM_PROMPT,
+    knowledge=knowledge,
     tools=[get_menu, get_ingredients, get_price],
     markdown=True,
     debug_mode=True

@@ -225,7 +225,7 @@ def update_order_address(order_id: int, delivery_address: Dict[str, str],
         order_id (int): ID do pedido (obrigatório).
         delivery_address (Dict[str, str]): Novo endereço de entrega (obrigatório).
             Campos obrigatórios:
-            - street_name (str): Nome da rua
+            - street_name (str): Nome da rua do endereço
             - number (str): Número do endereço
             Campos opcionais:
             - complement (str): Complemento do endereço
@@ -284,7 +284,7 @@ def update_order_address(order_id: int, delivery_address: Dict[str, str],
 
 def create_complete_order(client_name: str, client_document: str, delivery_date: str,
                          items: List[Dict[str, Any]], delivery_address: Dict[str, str],
-                         base_url: str | None = None, timeout: float = 10.0) -> Dict[str, Any]:
+                         base_url="http://localhost:8000/api", timeout: float = 10.0) -> Dict[str, Any]:
     """
     Cria um pedido completo com itens e endereço de entrega.
     
@@ -293,7 +293,18 @@ def create_complete_order(client_name: str, client_document: str, delivery_date:
         client_document (str): Documento do cliente (obrigatório).
         delivery_date (str): Data de entrega "YYYY-MM-DD" (obrigatório).
         items (List[Dict[str, Any]]): Lista de itens do pedido (obrigatório).
+        items = [
+            {"name": "Produto A", "quantity": 2, "unit_price": 10.50},
+            {"name": "Produto B", "quantity": 1, "unit_price": 25.00}
+        ]
+
         delivery_address (Dict[str, str]): Endereço de entrega (obrigatório).
+        delivery_address = {
+            "street_name": "Nome da rua contida no endereço" (obrigatório),
+            "number": "Numero do logradouro" (obrigatório),
+            "complement": "Complemento" ,
+            "reference_point": "Ponto de referência"
+        }
         base_url (str | None): URL base da API.
         timeout (float): Timeout para requisições.
         
@@ -306,10 +317,6 @@ def create_complete_order(client_name: str, client_document: str, delivery_date:
     # Adicionar itens se fornecidos (já valida campos obrigatórios)
     if items:
         add_items_to_order(order_id, items, base_url, timeout)
-    
-    # Atualizar endereço se fornecido (já valida campos obrigatórios)
-    if delivery_address:
-        update_order_address(order_id, delivery_address, base_url, timeout)
     
     # Retornar o pedido completo
     return get_order(order_id, base_url, timeout)
